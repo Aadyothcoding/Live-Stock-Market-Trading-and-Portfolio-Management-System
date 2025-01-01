@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Portfolio</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Theme Variables */
+        :root[data-theme="light"] {
+            /* Primary Colors */
+            --primary-blue: #2196F3;
+            --primary-green: #4CAF50;
+            
+            /* Secondary Colors */
+            --secondary-teal: #009688;
+            --secondary-gold: #FFD700;
+            
+            /* Alert Colors */
+            --alert-red: #ff6b6b;
+            --alert-yellow: #ffeaa7;
+            
+            /* Background Colors - Updated for dark gray scheme */
+            --bg-dark: #2c3e50;  /* Main background */
+            --bg-darker: #34495e; /* Darker elements */
+            --bg-card: #3c4c5c;  /* Card backgrounds */
+            --bg-hover: #465c70; /* Hover states */
+            
+            /* Text Colors */
+            --text-light: #ecf0f1;
+            --text-gray: #bdc3c7;
+            --text-muted: #95a5a6;
+            
+            /* Functional Colors */
+            --bg-primary: var(--bg-dark);
+            --bg-secondary: var(--bg-darker);
+            --text-primary: var(--text-light);
+            --text-secondary: var(--text-gray);
+            --accent-color: var(--primary-blue);
+            --accent-color-dark: #1976D2;
+            --success-color: var(--primary-green);
+            --success-color-dark: #388E3C;
+            --danger-color: var(--alert-red);
+            --warning-color: var(--alert-yellow);
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Global Styles */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Navigation Styles */
+        .navbar {
+            background-color: #054653;  /* Changed to grey */
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .navbar h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 500;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #ffffff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-links a.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Card Styles */
+        .card {
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th {
+            background-color: var(--bg-darker);
+            color: var(--text-primary);
+            font-weight: 600;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        tr:hover {
+            background-color: var(--bg-hover);
+        }
+
+        /* Form Styles */
+        input, select, textarea {
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-color-dark);
+        }
+
+        .btn-success {
+            background-color: var(--primary-green);
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: var(--alert-red);
+            color: white;
+        }
+
+        /* Message Styles */
+        .messages-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .message {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .message.success {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .message.error {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        /* Links */
+        a {
+            color: var(--accent-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--accent-color-dark);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <h1>Stock Portfolio</h1>
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'portfolio' %}" {% if request.resolver_match.url_name == 'portfolio' %}class="active"{% endif %}>Portfolio</a>
+                    <a href="{% url 'watchlist' %}" {% if request.resolver_match.url_name == 'watchlist' %}class="active"{% endif %}>Watchlist</a>
+                    <a href="{% url 'logout' %}">Logout</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="messages-container">
+        {% if messages %}
+        {% for message in messages %}
+        <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">
+            {{ message }}
+            <button class="close-message">&times;</button>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="container">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <script>
+        // Theme Toggle Functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        
+        // Check for saved theme preference
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        updateToggleButton();
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateToggleButton();
+        });
+
+        function updateToggleButton() {
+            const currentTheme = html.getAttribute('data-theme');
+            themeToggle.innerHTML = currentTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+        }
+
+        // Add this to handle message dismissal
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.close-message').forEach(button => {
+                button.addEventListener('click', () => {
+                    const message = button.parentElement;
+                    message.style.animation = 'slideOut 0.3s ease-out forwards';
+                    setTimeout(() => message.remove(), 300);
+                });
+            });
+
+            // Auto-dismiss messages after 5 seconds
+            setTimeout(() => {
+                document.querySelectorAll('.message').forEach(message => {
+                    message.style.animation = 'slideOut 0.3s ease-out forwards';
+                    setTimeout(() => message.remove(), 300);
+                });
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

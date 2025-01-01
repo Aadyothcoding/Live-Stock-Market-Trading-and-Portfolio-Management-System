@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="watchlist-page">
+    <div class="watchlist-header">
+        <h2>My Watchlist</h2>
+        <div class="add-stock-form">
+            <input 
+                type="text" 
+                id="watchlistTicker" 
+                placeholder="Enter stock symbol (e.g., AAPL)"
+                class="stock-input"
+            >
+            <button onclick="addToWatchlist()" class="add-button">Add to Watchlist</button>
+        </div>
+    </div>
+
+    <!-- List View of Watchlist Stocks -->
+    <div class="watchlist-table-container">
+        <table class="watchlist-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Company Name</th>
+                    <th>Current Price</th>
+                    <th>Change</th>
+                    <th>Market Cap</th>
+                    <th>Volume</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="watchlistItems">
+                <!-- Watchlist items will be populated here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .watchlist-page {
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .watchlist-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .add-stock-form {
+        display: flex;
+        gap: 10px;
+    }
+
+    .stock-input {
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 16px;
+        min-width: 200px;
+    }
+
+    .add-button {
+        padding: 10px 20px;
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    /* Table Styles */
+    .watchlist-table-container {
+        overflow-x: auto;
+        background-color: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+
+    .watchlist-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 800px;
+    }
+
+    .watchlist-table th,
+    .watchlist-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .watchlist-table th {
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .watchlist-table tr:hover {
+        background-color: var(--bg-primary);
+    }
+
+    .positive {
+        color: var(--success-color);
+    }
+
+    .negative {
+        color: var(--danger-color);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .remove-button {
+        padding: 6px 12px;
+        background-color: var(--danger-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .view-details-button {
+        padding: 6px 12px;
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+        .watchlist-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .add-stock-form {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<script>
+    function formatMarketCap(marketCap) {
+        if (!marketCap) return 'N/A';
+        if (marketCap >= 1e12) return `$${(marketCap / 1e12).toFixed(2)}T`;
+        if (marketCap >= 1e9) return `$${(marketCap / 1e9).toFixed(2)}B`;
+        if (marketCap >= 1e6) return `$${(marketCap / 1e6).toFixed(2)}M`;
+        return `$${marketCap.toFixed(2)}`;
+    }
+
+    function formatVolume(volume) {
+        if (!volume) return 'N/A';
+        if (volume >= 1e9) return `${(volume / 1e9).toFixed(2)}B`;
+        if (volume >= 1e6) return `${(volume / 1e6).toFixed(2)}M`;
+        if (volume >= 1e3) return `${(volume / 1e3).toFixed(2)}K`;
+        return volume.toString();
+    }
+
+    function addToWatchlist() {
+        const ticker = document.getElementById('watchlistTicker').value.toUpperCase();
+        if (!ticker) return;
+
+        // Get existing watchlist
+        let watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+        
+        // Add ticker if not already in watchlist
+        if (!watchlist.includes(ticker)) {
+            watchlist.push(ticker);
+            localStorage.setItem('watchlist', JSON.stringify(watchlist));
+            updateWatchlistDisplay();
+            document.getElementById('watchlistTicker').value = '';
+        }
+    }
+
+    function removeFromWatchlist(ticker) {
+        let watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+        watchlist = watchlist.filter(item => item !== ticker);
+        localStorage.setItem('watchlist', JSON.stringify(watchlist));
+        updateWatchlistDisplay();
+    }
+
+    function updateWatchlistDisplay() {
+        const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+        const container = document.getElementById('watchlistItems');
+        container.innerHTML = '';
+
+        watchlist.forEach(ticker => {
+            fetch(`/get_stock_price/${ticker}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const row = document.createElement('tr');
+                    const changePercent = ((data.price - data.previousClose) / data.previousClose) * 100;
+                    
+                    row.innerHTML = `
+                        <td>${ticker}</td>
+                        <td>${data.name || 'N/A'}</td>
+                        <td>${data.currency} ${data.price.toFixed(2)}</td>
+                        <td class="${changePercent >= 0 ? 'positive' : 'negative'}">
+                            ${changePercent >= 0 ? '↑' : '↓'} ${Math.abs(changePercent).toFixed(2)}%
+                        </td>
+                        <td>${formatMarketCap(data.marketCap)}</td>
+                        <td>${formatVolume(data.volume)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button onclick="removeFromWatchlist('${ticker}')" class="remove-button">Remove</button>
+                                <button onclick="window.location.href='/search?ticker=${ticker}'" class="view-details-button">Trade</button>
+                            </div>
+                        </td>
+                    `;
+                    container.appendChild(row);
+                })
+                .catch(error => console.error('Error fetching stock data:', error));
+        });
+    }
+
+    // Initial display
+    updateWatchlistDisplay();
+
+    // Update prices every 10 seconds
+    setInterval(updateWatchlistDisplay, 10000);
+</script>
+{% endblock %}

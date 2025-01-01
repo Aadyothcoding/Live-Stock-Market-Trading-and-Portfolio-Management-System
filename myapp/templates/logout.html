@@ -1,0 +1,16 @@
+{% extends 'auth_base.html' %}
+
+{% block content %}
+<div class="auth-card">
+    <h2 style="text-align: center; color: var(--primary-color); margin-bottom: 1.5rem;">
+        You have been logged out
+    </h2>
+    <p style="text-align: center; margin-bottom: 2rem; color: var(--text-color);">
+        Thank you for using Stock Portfolio
+    </p>
+    <a href="{% url 'login' %}" class="btn">Login again</a>
+    <div class="auth-links">
+        <a href="{% url 'signup' %}">Create new account</a>
+    </div>
+</div>
+{% endblock %}

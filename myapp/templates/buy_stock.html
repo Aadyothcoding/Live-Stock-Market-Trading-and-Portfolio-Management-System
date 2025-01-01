@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="portfolio-container">
+    <div class="search-container">
+        <form action="{% url 'buy_stock' %}" method="GET" class="search-form">
+            <input type="text" name="ticker" placeholder="Search stock by ticker symbol..." required>
+            <button type="submit" class="search-button">Search</button>
+        </form>
+    </div>
+
+    {% if stock_data %}
+    <div class="stock-preview">
+        <h3>{{ stock_data.name }} ({{ stock_data.ticker }})</h3>
+        
+        <div class="portfolio-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Current Price (INR)</th>
+                        <th>Market Cap</th>
+                        <th>Volume</th>
+                        <th>P/E Ratio</th>
+                        <th>52 Week High</th>
+                        <th>52 Week Low</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>₹{{ stock_data.current_price|floatformat:2 }}</td>
+                        <td>{{ stock_data.market_cap }}</td>
+                        <td>{{ stock_data.volume }}</td>
+                        <td>{{ stock_data.pe_ratio }}</td>
+                        <td>₹{{ stock_data.fifty_two_week_high|floatformat:2 }}</td>
+                        <td>₹{{ stock_data.fifty_two_week_low|floatformat:2 }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="buy-form-container">
+            <h4>Buy {{ stock_data.ticker }}</h4>
+            <form method="POST" action="{% url 'buy_stock' %}" class="buy-form">
+                {% csrf_token %}
+                <input type="hidden" name="ticker" value="{{ stock_data.ticker }}">
+                <div class="form-group">
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" name="quantity" id="quantity" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Total Cost:</label>
+                    <span id="totalCost">₹0.00</span>
+                </div>
+                <button type="submit" class="btn btn-primary">Buy Stock</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    body {
+        background-color: #f4f4f9;
+    }
+
+    .portfolio-container {
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .search-container {
+        margin-bottom: 20px;
+    }
+
+    .search-form {
+        display: flex;
+        gap: 10px;
+    }
+
+    .search-form input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: white;
+    }
+
+    .search-button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .search-button:hover {
+        background-color: #0056b3;
+    }
+
+    .stock-preview {
+        background-color: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .portfolio-table {
+        margin-top: 20px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .portfolio-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .portfolio-table th, 
+    .portfolio-table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .portfolio-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .portfolio-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .portfolio-table tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .buy-form-container {
+        margin-top: 20px;
+        padding: 20px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .buy-form {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: white;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+        width: 100%;
+    }
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+
+    h3 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+
+    h4 {
+        color: #2c3e50;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    #totalCost {
+        font-size: 1.2em;
+        font-weight: 500;
+        color: #2c3e50;
+    }
+</style>
+
+<script>
+    const quantityInput = document.getElementById('quantity');
+    const totalCostSpan = document.getElementById('totalCost');
+    const currentPrice = parseFloat('{{ stock_data.current_price|default:0|floatformat:2 }}');
+
+    quantityInput.addEventListener('input', function() {
+        const quantity = this.value;
+        const totalCost = (quantity * currentPrice).toFixed(2);
+        totalCostSpan.textContent = `₹${totalCost}`;
+    });
+</script>
+
+{% endblock %}

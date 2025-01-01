@@ -1,0 +1,678 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- User Header -->
+    <div class="user-header">
+        <h1>Welcome, {{ request.user.username }}</h1>
+        <div class="user-balance">
+            Available Balance: ₹{{ balance|floatformat:2 }}
+        </div>
+        <a href="{% url 'logout' %}" class="logout-button">Logout</a>
+    </div>
+
+    <!-- Balance Section -->
+    <div class="balance-section">
+        <div class="balance-card">
+            <h2>Account Balance</h2>
+            <div class="current-balance">
+                Current Balance: ₹{{ balance|floatformat:2 }}
+            </div>
+            <form method="POST" action="{% url 'add_balance' %}" class="add-balance-form">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input 
+                        type="number" 
+                        name="amount" 
+                        step="0.01" 
+                        min="0.01" 
+                        placeholder="Enter amount" 
+                        required
+                        class="balance-input"
+                    >
+                    <button type="submit" class="add-balance-btn">Add Funds</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-container">
+        <form method="GET" action="{% url 'search_stock' %}" class="search-form">
+            <input 
+                type="text" 
+                name="ticker" 
+                placeholder="Search stock (e.g. AAPL)" 
+                required
+                class="search-input"
+            >
+            <button type="submit" class="search-button">Search</button>
+        </form>
+    </div>
+
+    <!-- Updated balance-info section -->
+    <div class="balance-info">
+        <h3>Account Balance: ₹{{ balance|floatformat:2 }}</h3>
+        <div class="balance-actions">
+            <button onclick="showRemoveFundsModal()" class="btn btn-danger">Remove Funds</button>
+        </div>
+    </div>
+
+    <div class="portfolio-actions">
+        <a href="{% url 'buy_stock' %}" class="btn btn-primary">Buy Stock</a>
+    </div>
+
+    <!-- Portfolio Section -->
+    <section class="portfolio-section">
+        <h2>My Stocks</h2>
+        <div class="table-responsive">
+            <table class="stock-table">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Quantity</th>
+                        <th>Average Price (INR)</th>
+                        <th>Current Price (INR)</th>
+                        <th>Total Value (INR)</th>
+                        <th>P/L %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in stocks %}
+                    <tr class="stock-row" 
+                        data-ticker="{{ stock.ticker }}"
+                        data-quantity="{{ stock.quantity }}"
+                        data-avg-price="{{ stock.average_price }}">
+                        <td>{{ stock.ticker }}</td>
+                        <td>{{ stock.quantity }}</td>
+                        <td>₹{{ stock.average_price|floatformat:2 }}</td>
+                        <td class="current-price">₹{{ stock.current_price|floatformat:2 }}</td>
+                        <td class="total-value">₹{{ stock.total_value|floatformat:2 }}</td>
+                        <td class="profit-loss {% if stock.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
+                            {{ stock.profit_loss|floatformat:2 }}%
+                        </td>
+                        <td class="action-buttons">
+                            <a href="{% url 'stock_detail' stock.ticker %}" class="details-button">Details</a>
+                            <form method="POST" action="{% url 'sell_stock' %}" class="sell-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="ticker" value="{{ stock.ticker }}">
+                                <input type="number" name="quantity" min="1" max="{{ stock.quantity }}" required>
+                                <input type="hidden" name="current_price" value="{{ stock.current_price }}">
+                                <button type="submit">Sell</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="empty-message">No stocks in your portfolio. Use the search bar above to find and buy stocks.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Add this before the stock-ticker-container for debugging -->
+    {% if debug %}
+    <div style="background: #f0f0f0; padding: 10px; margin: 10px 0;">
+        <h4>Debug Info:</h4>
+        <p>Number of live stocks: {{ live_stocks|length }}</p>
+        <pre>{{ live_stocks|pprint }}</pre>
+    </div>
+    {% endif %}
+
+    <div class="stock-ticker-container">
+        <div class="marquee">
+            <div class="ticker-section gainers">
+                <span class="section-title">Top Gainers:</span>
+                {% for stock in live_stocks %}
+                    {% if stock.type == 'gainer' %}
+                        <span class="ticker-item">
+                            {{ stock.symbol }} 
+                            <span class="price positive">
+                                ₹{{ stock.price|floatformat:2 }} 
+                                ▲{{ stock.change|floatformat:2 }}%
+                            </span>
+                        </span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="ticker-section losers">
+                <span class="section-title">Top Losers:</span>
+                {% for stock in live_stocks %}
+                    {% if stock.type == 'loser' %}
+                        <span class="ticker-item">
+                            {{ stock.symbol }} 
+                            <span class="price negative">
+                                ₹{{ stock.price|floatformat:2 }} 
+                                ▼{{ stock.change|floatformat:2 }}%
+                            </span>
+                        </span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .dashboard {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .user-header {
+            background-color: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .user-balance {
+            color: var(--success-color);
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 10px;
+            max-width: 600px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .search-button {
+            padding: 10px 20px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .stock-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .stock-table th,
+        .stock-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stock-table th {
+            font-weight: 600;
+        }
+
+        .profit {
+            color: var(--success-color);
+        }
+
+        .loss {
+            color: var(--danger-color);
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+        }
+
+        .logout-button {
+            background-color: var(--danger-color);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .details-button {
+            padding: 8px 16px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .details-button:hover {
+            background-color: var(--accent-color-dark);
+        }
+
+        @media (max-width: 768px) {
+            .user-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .search-form {
+                flex-direction: column;
+            }
+        }
+
+        .balance-section {
+            margin-bottom: 30px;
+        }
+
+        .balance-card {
+            background-color: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .current-balance {
+            font-size: 1.2rem;
+            color: var(--success-color);
+            margin: 10px 0;
+        }
+
+        .add-balance-form {
+            margin-top: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .balance-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .add-balance-btn {
+            padding: 10px 20px;
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .add-balance-btn:hover {
+            background-color: var(--success-color-dark);
+        }
+
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+        }
+
+        .balance-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .balance-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        #maxAmount {
+            display: block;
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .modal .form-group {
+            margin-bottom: 20px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+
+        .modal .btn {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        #maxAmount {
+            display: block;
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .stock-ticker-container {
+            background: rgba(5, 70, 83, 0.9);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 50px;
+            position: relative;
+        }
+
+        .marquee {
+            white-space: nowrap;
+            overflow: hidden;
+            animation: marquee 40s linear infinite;
+            display: inline-block;
+            min-width: 100%;
+        }
+
+        .ticker-section {
+            display: inline-block;
+            margin-right: 50px;
+            padding: 0 20px;
+        }
+
+        .section-title {
+            color: #ffffff;
+            font-weight: 600;
+            margin-right: 15px;
+            font-size: 1.1rem;
+            display: inline-block;
+        }
+
+        .ticker-item {
+            display: inline-block;
+            padding: 0 20px;
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 500;
+            border-left: 1px solid rgba(255,255,255,0.2);
+            margin: 0 5px;
+        }
+
+        .price {
+            margin-left: 5px;
+            font-weight: 600;
+        }
+
+        .price.positive {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .price.negative {
+            color: #FF5252;
+            font-weight: bold;
+        }
+
+        .gainers .section-title {
+            color: #4CAF50;
+        }
+
+        .losers .section-title {
+            color: #FF5252;
+        }
+
+        @keyframes marquee {
+            0% {
+                transform: translateX(100%);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        /* Add hover effect to pause animation */
+        .stock-ticker-container:hover .marquee {
+            animation-play-state: paused;
+        }
+    </style>
+
+    <div id="removeFundsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Remove Funds</h2>
+            <form method="POST" action="{% url 'remove_funds' %}" id="removeFundsForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="amount">Amount (₹):</label>
+                    <input type="number" name="amount" id="amount" min="0.01" step="0.01" required>
+                    <span id="maxAmount">Available: ₹{{ balance|floatformat:2 }}</span>
+                </div>
+                <button type="submit" class="btn btn-danger">Remove Funds</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        async function updateStockPrices() {
+            try {
+                const rows = document.querySelectorAll('.stock-row');
+                console.log(`Updating ${rows.length} stocks...`);  // Debug log
+
+                for (const row of rows) {
+                    const ticker = row.getAttribute('data-ticker');
+                    const priceCell = row.querySelector('.current-price');
+                    const valueCell = row.querySelector('.total-value');
+                    const plCell = row.querySelector('.profit-loss');
+                    const quantity = parseFloat(row.getAttribute('data-quantity'));
+                    const avgPrice = parseFloat(row.getAttribute('data-avg-price'));
+                    
+                    try {
+                        const response = await fetch(`/get_stock_price/${ticker}/`);
+                        const data = await response.json();
+                        
+                        if (data.price) {
+                            const oldPrice = parseFloat(priceCell.textContent.replace(/[^0-9.-]+/g, ""));
+                            const currentPrice = data.price;
+                            
+                            console.log(`${ticker}: ${oldPrice} -> ${currentPrice}`);  // Debug log
+
+                            // Update price with animation
+                            priceCell.textContent = `₹${currentPrice.toFixed(2)}`;
+                            
+                            // Calculate and update total value
+                            const totalValue = currentPrice * quantity;
+                            valueCell.textContent = `₹${totalValue.toFixed(2)}`;
+                            
+                            // Calculate and update P/L
+                            const plPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
+                            plCell.textContent = `${plPercentage.toFixed(2)}%`;
+                            plCell.className = `profit-loss ${plPercentage >= 0 ? 'profit' : 'loss'}`;
+
+                            // Visual feedback for price change
+                            if (currentPrice !== oldPrice) {
+                                const changeClass = currentPrice > oldPrice ? 'price-up' : 'price-down';
+                                const flashColor = currentPrice > oldPrice ? 
+                                    'rgba(40, 167, 69, 0.2)' : 
+                                    'rgba(220, 53, 69, 0.2)';
+
+                                priceCell.classList.add(changeClass);
+                                priceCell.style.backgroundColor = flashColor;
+
+                                // Remove the flash effect
+                                setTimeout(() => {
+                                    priceCell.style.backgroundColor = 'transparent';
+                                    priceCell.classList.remove(changeClass);
+                                }, 1000);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Error updating ${ticker}:`, error);
+                    }
+                }
+            } catch (error) {
+                console.error('Error in updateStockPrices:', error);
+            }
+        }
+
+        // Run initial update
+        updateStockPrices();
+
+        // Set up periodic updates
+        const updateInterval = setInterval(updateStockPrices, 10000);  // Every 10 seconds
+
+        // Clean up interval when page is hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearInterval(updateInterval);
+            } else {
+                updateStockPrices();
+                setInterval(updateStockPrices, 10000);
+            }
+        });
+
+        // Add styles for price updates
+        const style = document.createElement('style');
+        style.textContent = `
+            .price-up {
+                color: var(--success-color) !important;
+                transition: all 0.3s ease;
+            }
+            
+            .price-down {
+                color: var(--danger-color) !important;
+                transition: all 0.3s ease;
+            }
+            
+            .current-price {
+                transition: all 0.3s ease;
+                position: relative;
+            }
+
+            @keyframes flashGreen {
+                0% { background-color: transparent; }
+                50% { background-color: rgba(40, 167, 69, 0.2); }
+                100% { background-color: transparent; }
+            }
+
+            @keyframes flashRed {
+                0% { background-color: transparent; }
+                50% { background-color: rgba(220, 53, 69, 0.2); }
+                100% { background-color: transparent; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        function showRemoveFundsModal() {
+            const modal = document.getElementById('removeFundsModal');
+            modal.style.display = 'block';
+        }
+
+        // Close modal when clicking X
+        document.querySelector('#removeFundsModal .close').onclick = function() {
+            document.getElementById('removeFundsModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('removeFundsModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Validate form submission
+        document.getElementById('removeFundsForm').onsubmit = function(e) {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const balance = parseFloat('{{ balance|floatformat:2 }}');
+            
+            if (amount > balance) {
+                e.preventDefault();
+                alert('Cannot remove more than available balance');
+            }
+        }
+
+        // Refresh the page every 5 minutes to update stock data
+        setTimeout(function() {
+            location.reload();
+        }, 300000); // 300000 ms = 5 minutes
+    </script>
+</div>
+{% endblock %}
