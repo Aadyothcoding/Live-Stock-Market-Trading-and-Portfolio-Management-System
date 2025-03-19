@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    body {
+        background-color: #f9f8fa; /* Light gray background for better contrast */
+        color: #212529; /* Dark text color for readability */
+    }
+
+    .container {
+        margin-top: 50px;
+    }
+
+    h1, h2 {
+        color: #054653; /* Teal color for headings */
+    }
+
+    .form-row {
+        margin-bottom: 20px;
+    }
+
+    .btn-primary {
+        background-color: #0a6375; /* Teal button */
+        border-color: #0a6375;
+        color: #ffffff; /* White text for buttons */
+    }
+
+    .btn-primary:hover {
+        background-color: #054653; /* Darker teal on hover */
+        border-color: #054653;
+    }
+
+    .list-group-item {
+        background-color: #ffffff; /* White background for list items */
+        border: 1px solid #ddd;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        color: #212529; /* Dark text for readability */
+    }
+
+    .list-group-item a {
+        color: #0a6375; /* Teal links */
+        font-weight: bold;
+        text-decoration: none;
+    }
+
+    .list-group-item a:hover {
+        text-decoration: underline;
+    }
+
+    .card {
+        border: none;
+        border-radius: 10px;
+        background-color: #ffffff; /* White card background */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        color: #212529; /* Dark text for readability */
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    .table {
+        margin-top: 20px;
+    }
+
+    .thead-dark th {
+        background-color: #054653; /* Teal table header */
+        color: #ffffff; /* White text for table header */
+    }
+
+    .text-muted {
+        color: #6c757d !important; /* Muted gray text for secondary information */
+    }
+
+    .text-center {
+        margin-top: 20px;
+        color: #212529; /* Dark text for better visibility */
+    }
+</style>
+
+<div class="container">
+    <h1 class="text-center">AI Stock Analysis</h1>
+    <form method="POST" class="mt-4">
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="col-md-5">
+                <input type="text" name="ticker1" class="form-control" placeholder="Enter first stock ticker" required>
+            </div>
+            <div class="col-md-5">
+                <input type="text" name="ticker2" class="form-control" placeholder="Enter second stock ticker" required>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-block">Compare</button>
+            </div>
+        </div>
+    </form>
+
+    {% if error %}
+    <div class="alert alert-danger mt-4">{{ error }}</div>
+    {% endif %}
+
+    {% if ticker1 and ticker2 %}
+    <div class="mt-5">
+        <h2 class="text-center">Comparison: {{ ticker1 }} vs {{ ticker2 }}</h2>
+
+        <!-- Side-by-Side News Tables -->
+        <div class="row mt-4">
+            <!-- News Table for Ticker 1 -->
+            <div class="col-md-6">
+                <h4 class="text-center">News for {{ ticker1 }}</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Title</th>
+                                <th>Published Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for article in news1 %}
+                            <tr>
+                                <td><a href="{{ article.link }}" target="_blank">{{ article.title }}</a></td>
+                                <td class="text-muted">{{ article.published }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- News Table for Ticker 2 -->
+            <div class="col-md-6">
+                <h4 class="text-center">News for {{ ticker2 }}</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Title</th>
+                                <th>Published Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for article in news2 %}
+                            <tr>
+                                <td><a href="{{ article.link }}" target="_blank">{{ article.title }}</a></td>
+                                <td class="text-muted">{{ article.published }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Fundamentals Comparison -->
+        <div class="mt-5">
+            <h4 class="text-center">Stock Fundamentals Comparison</h4>
+            <ul>
+                {% for metric, values in fundamentals.items %}
+                <li><strong>{{ metric }}:</strong> {{ ticker1 }}: {{ values.ticker1 }}, {{ ticker2 }}: {{ values.ticker2 }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Analyst Recommendations Comparison -->
+        <div class="mt-5">
+            <h4 class="text-center">Analyst Recommendations Comparison</h4>
+            <ul>
+                {% for recommendation, values in recommendations.items %}
+                <li><strong>{{ recommendation }}:</strong> {{ ticker1 }}: {{ values.ticker1 }}, {{ ticker2 }}: {{ values.ticker2 }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="mt-5">
+            <h4 class="text-center">AI Analysis</h4>
+            <div class="card shadow-sm mt-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>{{ ticker1 }}</th>
+                                    <th>{{ ticker2 }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ analysis|safe }}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-muted text-center">Analysis provided by AI-powered financial tools.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

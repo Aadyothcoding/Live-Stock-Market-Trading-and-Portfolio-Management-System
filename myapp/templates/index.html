@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Price Predictor</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            margin: 20px; 
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            margin: auto;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .result {
+            margin-top: 20px;
+            display: none;
+        }
+        .loading {
+            display: none;
+            font-size: 18px;
+            color: #007bff;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Stock Price Predictor</h1>
+        <form id="stockForm">
+            <input type="text" id="stock_symbol" name="stock_symbol" placeholder="Enter stock symbol (e.g., AAPL)" required>
+            <button type="submit">Predict</button>
+        </form>
+        <p class="loading">Fetching data and making prediction...</p>
+        {% if error %}
+            <p style="color: red;">{{ error }}</p>
+        {% endif %}
+        <div class="result" id="result">
+            <h2>Predicted Price for <span id="ticker"></span>: $<span id="pred_price"></span></h2>
+            <img id="stockPlot" src="" alt="Stock Prediction Graph">
+        </div>
+    </div>
+    
+    <script>
+        var predictUrl = "{% url 'predict_stock' %}"; // Store Django URL
+        
+        $.ajaxSetup({
+            headers: { "X-CSRFToken": "{{ csrf_token }}" }
+        });
+
+        $(document).ready(function() {
+            $("#stockForm").submit(function(event) {
+                event.preventDefault();
+                var formData = $(this).serialize();
+                $(".loading").show();
+                $(".result").hide();
+                
+                $.post(predictUrl, formData, function(response) {
+                    $(".loading").hide();
+                    $("#ticker").text(response.stock_ticker);
+                    $("#pred_price").text(response.predicted_price);
+                    $("#stockPlot").attr("src", "data:image/png;base64," + response.plot);
+                    $(".result").show();
+                }).fail(function(xhr, status, error) {
+                    $(".loading").hide();
+                    alert("Error: " + (xhr.responseJSON ? xhr.responseJSON.error : "Unknown error"));
+                });
+            });
+        });
+    </script>
+</body>
+</html>

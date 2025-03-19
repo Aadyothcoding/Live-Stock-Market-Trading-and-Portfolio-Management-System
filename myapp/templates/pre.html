@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card p-4 shadow-lg">
+        <h2 class="text-center text-primary mb-4">📈 Stock Price Predictor</h2>
+
+        <form method="POST" class="mt-4">
+            {% csrf_token %}
+            <div class="input-group mb-3">
+                <input type="text" id="stock_ticker" name="stock_ticker" class="form-control" placeholder="Enter Stock Symbol (e.g., AAPL)" required>
+                <div class="input-group-append">
+                    <button type="submit" class="btn btn-success px-4">Predict</button>
+                </div>
+            </div>
+        </form>
+
+        {% if error %}
+            <div class="alert alert-danger mt-3 text-center">
+                <i class="fas fa-exclamation-circle"></i> {{ error }}
+            </div>
+        {% endif %}
+
+        {% if predicted_price %}
+            <div class="text-center mt-4">
+                <h4 class="text-dark">📊 Price Prediction Graph</h4>
+                <img src="data:image/png;base64,{{ chart }}" class="img-fluid rounded shadow-lg mt-3" alt="Stock Prediction Chart">
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    /* Container Styling */
+    .container {
+        max-width: 700px;
+    }
+
+    /* Card Styling */
+    .card {
+        border-radius: 15px;
+        background-color: #f8f9fa;
+        border: none;
+    }
+
+    /* Heading Styling */
+    h2 {
+        font-weight: bold;
+        font-size: 2rem;
+    }
+
+    /* Button Styling */
+    .btn-success {
+        background-color: #28a745;
+        border: none;
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+        transform: scale(1.05);
+        transition: all 0.3s ease;
+    }
+
+    /* Alert Styling */
+    .alert {
+        font-size: 1.2rem;
+        font-weight: 500;
+    }
+
+    /* Image Styling */
+    img {
+        max-height: 400px;
+        object-fit: contain;
+    }
+</style>
+{% endblock %}

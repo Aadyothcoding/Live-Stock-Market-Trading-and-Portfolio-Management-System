@@ -11,6 +11,25 @@ from django.contrib import messages
 import requests
 from nsetools import Nse
 from concurrent.futures import ThreadPoolExecutor
+from phi.agent import Agent
+from phi.model.groq import Groq
+from dotenv import load_dotenv
+from phi.tools.yfinance import YFinanceTools
+import feedparser
+import markdown2
+import pickle
+from django.shortcuts import render
+from sklearn.preprocessing import MinMaxScaler
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import io
+import base64 
+import numpy as np
+from django.http import JsonResponse
+from io import BytesIO  # Import BytesIO
+
+
 
 @login_required
 def portfolio(request):
@@ -335,6 +354,14 @@ from django.contrib.auth.decorators import login_required
 def signup(request):
     if request.method == 'POST':
         form = UserForm(request.POST)
+        password = request.POST.get('password1')
+        confirm_password = request.POST.get('password2')
+
+        # Check if passwords match
+        if password != confirm_password:
+            messages.error(request, "Passwords do not match. Please try again.")
+            return render(request, 'signup.html', {'form': form})
+
         if form.is_valid():
             user = form.save()
             # Create UserProfile with initial balance (e.g., $10000)
@@ -343,7 +370,10 @@ def signup(request):
                 balance=10000.00  # Set initial balance
             )
             login(request, user)
+            messages.success(request, "Signup successful! Welcome to your portfolio.")
             return redirect('portfolio')
+        else:
+            messages.error(request, "There was an error with your signup. Please check the form and try again.")
     else:
         form = UserForm()
     return render(request, 'signup.html', {'form': form})
@@ -354,9 +384,13 @@ def login_view(request):
         username = request.POST['username']
         password = request.POST['password']
         user = authenticate(request, username=username, password=password)
+
         if user is not None:
             login(request, user)  # Log the user in
+            messages.success(request, f"Welcome back, {username}!")
             return redirect('portfolio')  # Redirect to the home page
+        else:
+            messages.error(request, "Invalid username or password. Please try again.")
     return render(request, 'login.html')
 
 def logout_view(request):
@@ -535,3 +569,181 @@ def remove_funds(request):
             messages.error(request, str(e))
             return redirect('portfolio')
     return redirect('portfolio')
+
+
+# Load environment variables
+load_dotenv()
+
+# Define LLaMA model
+llama_model = Groq(id="llama-3.3-70b-versatile")
+
+# Function to fetch latest stock news
+def get_stock_news(ticker):
+    url = f"https://news.google.com/rss/search?q={ticker}+stock&hl=en-US&gl=US&ceid=US:en"
+    feed = feedparser.parse(url)
+    
+    news_list = []
+    for entry in feed.entries[:5]:  # Get the top 5 news articles
+        news_list.append({
+            "title": entry.title,
+            "link": entry.link,
+            "published": entry.published
+        })
+    
+    return news_list
+
+# Finance AI Agent
+finance_agent = Agent(
+    model=llama_model,
+    tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, stock_fundamentals=True)],
+    show_tool_calls=True,
+    markdown=True,
+    instructions=[
+        "Provide a well-structured comparison using bullet points and tables.",
+        "Ensure that the response includes financial metrics, trends, and analyst opinions.",
+        "Use markdown tables for structured data presentation."
+    ],
+    disable_fallback_to_openai=True
+)
+
+
+
+
+# Finance AI Agent
+finance_agent = Agent(
+    model=llama_model,
+    tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, stock_fundamentals=True)],
+    show_tool_calls=True,
+    markdown=True,
+    instructions=[
+        "Provide a well-structured comparison using bullet points and tables.",
+        "Ensure that the response includes financial metrics, trends, and analyst opinions.",
+        "Use markdown tables for structured data presentation."
+    ],
+    disable_fallback_to_openai=True
+)
+
+# Function to format AI response for HTML display
+def format_analysis(response_text):
+    """
+    Converts the AI-generated text (tables and bullet points) into clean HTML.
+    """
+    if not response_text or response_text.strip() == "":
+        return "<p>No analysis available.</p>"
+
+    return markdown2.markdown(response_text)  # Converts Markdown to HTML
+
+# View to handle AI stock analysis
+def stock_ai_view(request):
+    if request.method == "POST":
+        ticker1 = request.POST.get("ticker1", "").upper()
+        ticker2 = request.POST.get("ticker2", "").upper()
+        
+        if not ticker1 or not ticker2:
+            return render(request, "ai.html", {"error": "Please enter two stock tickers!"})
+
+        # Fetch news
+        news1 = get_stock_news(ticker1)
+        news2 = get_stock_news(ticker2)
+
+        # Fetch AI analysis
+        print("Fetching AI analysis...")
+        response = finance_agent.run(
+            f"Compare the stock fundamentals, analyst recommendations, and price trends of {ticker1} and {ticker2}."
+        )
+
+        # Extract response text correctly
+        response_text = getattr(response, 'content', str(response)) or "No analysis available."
+
+        # Debugging: Print AI response to terminal
+        print("Extracted AI Response:", response_text)
+
+        # Convert response_text to HTML format
+        formatted_analysis = format_analysis(response_text)
+
+        # Add additional formatting for better structure
+        formatted_analysis = f"""
+        <div class='analysis-section'>
+            <h5 class='text-center'>Detailed Comparison</h5>
+            {formatted_analysis}
+        </div>
+        """
+
+        return render(
+            request,
+            "ai.html",
+            {
+                "ticker1": ticker1,
+                "ticker2": ticker2,
+                "news1": news1,
+                "news2": news2,
+                "analysis": formatted_analysis  # Now in clean HTML format
+            }
+        )
+    
+    return render(request, "ai.html")
+
+# Load trained LSTM model and scaler
+model_path = "/Users/aadyothsreeram/Documents/personal_projects/django course/stock app/myapp/stock_lstm_model.pkl"
+scaler_path = "/Users/aadyothsreeram/Documents/personal_projects/django course/stock app/myapp/scaler.pkl"
+
+with open(model_path, "rb") as f:
+    lstm_model = pickle.load(f)
+
+with open(scaler_path, "rb") as f:
+    scaler = pickle.load(f)
+
+def predict_stock(request):
+    if request.method == "POST":
+        ticker = request.POST.get("stock_symbol")  # Ensure this matches HTML form input
+        
+        try:
+            # Fetch stock data
+            data = yf.download(ticker, period="5d", interval="1d", auto_adjust=False)
+
+            # Check if data is empty
+            if data.empty:
+                return JsonResponse({"error": "Invalid stock symbol or no data available"}, status=400)
+
+            # Extract relevant features (modify based on how the scaler was trained)
+            feature_names = ['Close']  # Change to ['Open', 'High', 'Low', 'Close', 'Volume'] if your scaler was trained on all 5
+            last_features = data[feature_names].iloc[-1].to_frame().T  # Convert to DataFrame
+
+            # Scale data while retaining feature names
+            scaled_features = scaler.transform(last_features)  # No need to convert back to DataFrame
+
+            # Reshape for LSTM (samples, timesteps, features)
+            lstm_input = np.reshape(scaled_features, (1, 1, scaled_features.shape[1]))
+
+            # Get prediction
+            prediction = lstm_model.predict(lstm_input)[0][0]
+
+            # Generate stock price plot
+            plt.figure(figsize=(8, 4))
+            plt.plot(data["Close"], label="Close Price", color='blue')
+            plt.title(f"{ticker} Stock Price")
+            plt.xlabel("Date")
+            plt.ylabel("Price")
+            plt.legend()
+
+            # Convert plot to Base64
+            buffer = BytesIO()
+            plt.savefig(buffer, format="png")
+            buffer.seek(0)
+            image_base64 = base64.b64encode(buffer.getvalue()).decode()
+            plt.close()
+
+            return JsonResponse({
+                "stock_ticker": ticker,
+                "predicted_price": round(float(prediction), 2),
+                "plot": image_base64
+            })
+
+        except BrokenPipeError:
+            print("Client closed connection before response was sent.")
+            return JsonResponse({"error": "Connection interrupted."}, status=499)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return render(request, "index.html")

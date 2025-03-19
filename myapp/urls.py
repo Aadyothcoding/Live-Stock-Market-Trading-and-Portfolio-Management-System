@@ -16,4 +16,6 @@ urlpatterns = [
     path('get_stock_news/<str:ticker>/', views.get_stock_news, name='get_stock_news'),
     path('add_balance/', views.add_balance, name='add_balance'),
     path('remove_funds/', views.remove_funds, name='remove_funds'),
+    path("ai/", views.stock_ai_view, name="ai"),
+    path("pred/", views.predict_stock, name="predict_stock"),
 ]
