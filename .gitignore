@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Django
+db.sqlite3
+*.sqlite3
+*.db
+
+# Environment
+.env
+.env.*
+*.env
+*.envrc
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Static/media files (optional, if generated)
+staticfiles/
+media/
+static/
+mediafiles/
+
+# Model and scaler files
+*.pkl
+*.h5
+*.joblib
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Migrations (optional, if you want to ignore pyc in migrations)
+*/migrations/*.pyc
+
+# Cache
+.cache/
+*.cache
+
+# Test output
+htmlcov/
+.coverage
+.tox/
+.nox/
+.pytest_cache/
+
+# Backup files
+*~
+*.bak
+
+# Node/npm (if any frontend)
+node_modules/
+npm-debug.log
+
+# Secret/config files
+secrets.json
+
+# VSCode settings
+.vscode/
