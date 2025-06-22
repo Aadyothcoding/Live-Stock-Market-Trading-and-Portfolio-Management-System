@@ -1,33 +1,41 @@
-from django.shortcuts import render, redirect
-from .models import UserProfile, Stock, Transaction
-import yfinance as yf
-from .forms import UserForm
-from django.contrib.auth.decorators import login_required
+# Standard library
+import time
+import io
+import base64
+from io import BytesIO
 from decimal import Decimal
-from django.contrib.auth import login
-from django.http import JsonResponse
+
+# Third-party
+import yfinance as yf
 import pandas as pd
-from django.contrib import messages
-import requests
-from nsetools import Nse
-from concurrent.futures import ThreadPoolExecutor
-from phi.agent import Agent
-from phi.model.groq import Groq
-from dotenv import load_dotenv
-from phi.tools.yfinance import YFinanceTools
-import feedparser
-import markdown2
-import pickle
-from django.shortcuts import render
-from sklearn.preprocessing import MinMaxScaler
+import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import io
-import base64 
-import numpy as np
+import feedparser
+import markdown2
+import pickle
+from dotenv import load_dotenv
+from nsetools import Nse
+from concurrent.futures import ThreadPoolExecutor
+
+# Django
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from io import BytesIO  # Import BytesIO
+
+# App-specific
+from .models import UserProfile, Stock, Transaction
+from .forms import UserForm
+
+# Custom tools
+from phi.agent import Agent
+from phi.model.groq import Groq
+from phi.tools.yfinance import YFinanceTools
+from sklearn.preprocessing import MinMaxScaler
+
 
 
 
